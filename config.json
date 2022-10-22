@@ -1,0 +1,31 @@
+{
+  "configs": {
+    "period": 10
+  },
+  "domains": [
+    {
+      "domain": "db.rv.ua",
+      "provider": "cloudflare",
+      "options": {
+        "email": "email",
+        "api_key": "key"
+      }
+    },
+    {
+      "host": "progress.db.rv.ua",
+      "provider": "cloudflare",
+      "options": {
+        "email": "email",
+        "api_key": "key"
+      }
+    },
+    {
+      "host": "en.db.rv.ua",
+      "provider": "cloudflare",
+      "options": {
+        "email": "email",
+        "api_key": "key"
+      }
+    }
+  ]
+}
