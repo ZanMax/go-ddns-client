@@ -1,0 +1,11 @@
+[Unit]
+Description=DDNS application
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5s
+ExecStart=/path/to/binary/file
+
+[Install]
+WantedBy=multi-user.target
