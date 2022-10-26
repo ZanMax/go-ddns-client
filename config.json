@@ -1,25 +1,36 @@
 {
   "configs": {
-    "period": 100
+    "period": 60
   },
   "domains": [
     {
-      "domain": "db.rv.ua",
+      "domain": "domain.com",
       "provider": "cloudflare",
+      "is_subdomain": false,
       "options": {
         "api_token": "<TOKEN>"
       }
     },
     {
-      "domain": "progress.db.rv.ua",
+      "domain": "sub1.domain.com",
       "provider": "cloudflare",
+      "is_subdomain": true,
       "options": {
         "api_token": "<TOKEN>"
       }
     },
     {
-      "domain": "en.db.rv.ua",
+      "domain": "sub2.domain.com",
       "provider": "cloudflare",
+      "is_subdomain": true,
+      "options": {
+        "api_token": "<TOKEN>"
+      }
+    },
+    {
+      "domain": "sub3.domain.com",
+      "provider": "cloudflare",
+      "is_subdomain": true,
       "options": {
         "api_token": "<TOKEN>"
       }

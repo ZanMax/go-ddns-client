@@ -21,9 +21,10 @@ type Domains struct {
 }
 
 type Domain struct {
-	Domain   string `json:"domain"`
-	Provider string `json:"provider"`
-	Options  Options
+	Domain      string `json:"domain"`
+	Provider    string `json:"provider"`
+	IsSubdomain bool   `json:"is_subdomain"`
+	Options     Options
 }
 
 type Options struct {
@@ -43,24 +44,22 @@ func main() {
 	data, err := ioutil.ReadFile("config.json")
 	checkError(err)
 
-	var domain Domains
+	var domains Domains
 	var period Config
 
 	err = json.Unmarshal(data, &period)
 	checkError(err)
-	err = json.Unmarshal(data, &domain)
+	err = json.Unmarshal(data, &domains)
 	checkError(err)
-	var domainToken = make(map[string]string)
 
-	for i := 0; i < len(domain.Domains); i++ {
-		domainToken[domain.Domains[i].Domain] = domain.Domains[i].Options.ApiToken
-	}
 	runPeriod := period.Configs.Period
 	if runPeriod > 0 {
 		wg := sync.WaitGroup{}
 		wg.Add(1)
-		go runTimer(runPeriod, domainToken, &wg)
+		go runTimer(runPeriod, domains, &wg)
 		wg.Wait()
+	} else {
+		fmt.Println("Period must be greater than 0")
 	}
 }
 
@@ -83,7 +82,22 @@ func getCurrentIP() string {
 	return clearIP
 }
 
-func runTimer(interval int, domainToken map[string]string, wg *sync.WaitGroup) {
+func getDomainFromSubdomain(subdomain string) string {
+	split := strings.Split(subdomain, ".")
+	if len(split) > 2 {
+		var rootDomain []string
+		for i, d := range split {
+			if i > 0 {
+				rootDomain = append(rootDomain, d)
+			}
+		}
+		return strings.Join(rootDomain, ".")
+	} else {
+		return subdomain
+	}
+}
+
+func runTimer(interval int, domains Domains, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(time.Duration(interval) * time.Second)
 	done := make(chan bool)
 	go func() {
@@ -97,25 +111,45 @@ func runTimer(interval int, domainToken map[string]string, wg *sync.WaitGroup) {
 					onStart = false
 				} else {
 					if curIP != prevIP {
-						for domain, token := range domainToken {
-							fmt.Println("Updating ", domain)
-							fmt.Println("Token: ", token)
+						for _, d := range domains.Domains {
 
-							api, err := cloudflare.NewWithAPIToken(token)
-							checkError(err)
-							ctx := context.Background()
-							zoneID, err := api.ZoneIDByName(domain)
-							checkError(err)
+							domain := d.Domain
+							token := d.Options.ApiToken
+							if !d.IsSubdomain {
+								api, err := cloudflare.NewWithAPIToken(token)
+								checkError(err)
+								ctx := context.Background()
+								zoneID, err := api.ZoneIDByName(domain)
+								checkError(err)
 
-							dnsRecord, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: domain})
-							checkError(err)
-							fmt.Println("DNS Record: ", dnsRecord)
-							record := dnsRecord[0]
-							record.Content = curIP
+								dnsRecord, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: domain})
+								checkError(err)
 
-							err = api.UpdateDNSRecord(ctx, zoneID, record.ID, record)
-							checkError(err)
+								record := dnsRecord[0]
+								record.Content = curIP
+
+								err = api.UpdateDNSRecord(ctx, zoneID, record.ID, record)
+								checkError(err)
+							} else {
+								rootDomain := getDomainFromSubdomain(domain)
+
+								api, err := cloudflare.NewWithAPIToken(token)
+								checkError(err)
+								ctx := context.Background()
+								zoneID, err := api.ZoneIDByName(rootDomain)
+								checkError(err)
+
+								dnsRecord, err := api.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: domain})
+								checkError(err)
+
+								record := dnsRecord[0]
+								record.Content = curIP
+
+								err = api.UpdateDNSRecord(ctx, zoneID, record.ID, record)
+								checkError(err)
+							}
 						}
+						prevIP = curIP
 					}
 				}
 			case <-done:
